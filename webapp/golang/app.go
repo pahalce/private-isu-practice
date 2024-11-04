@@ -28,6 +28,7 @@ import (
 var (
 	db    *sqlx.DB
 	store *gsm.MemcacheStore
+	memcacheClient *memcache.Client
 )
 
 const (
@@ -72,7 +73,7 @@ func init() {
 	if memdAddr == "" {
 		memdAddr = "localhost:11211"
 	}
-	memcacheClient := memcache.New(memdAddr)
+	memcacheClient = memcache.New(memdAddr)
 	store = gsm.NewMemcacheStore(memcacheClient, "iscogram_", []byte("sendagaya"))
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 }
@@ -756,6 +757,15 @@ func postIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cacheKey := fmt.Sprintf("image_%d", pid)
+    err = memcacheClient.Set(&memcache.Item{
+        Key:   cacheKey,
+        Value: filedata,
+    })
+    if err != nil {
+        log.Printf("Failed to cache image: %v", err)
+    }
+
 	http.Redirect(w, r, "/posts/"+strconv.FormatInt(pid, 10), http.StatusFound)
 }
 
@@ -767,6 +777,19 @@ func getImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cacheKey := fmt.Sprintf("image_%d", pid)
+	// キャッシュから画像を取得
+	item, err := memcacheClient.Get(cacheKey)
+	if err == nil && item != nil {
+			w.Header().Set("Content-Type", http.DetectContentType(item.Value))
+			_, err = w.Write(item.Value)
+			if err != nil {
+					log.Print(err)
+			}
+			return
+	}
+
+	// キャッシュに存在しない場合、データベースから取得
 	post := Post{}
 	err = db.Get(&post, "SELECT * FROM `posts` WHERE `id` = ?", pid)
 	if err != nil {
