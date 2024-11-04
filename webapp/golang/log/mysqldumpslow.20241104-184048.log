@@ -1,0 +1,165 @@
+Count: 4  Time=0.32s (1s)  Lock=0.00s (0s)  Rows=0.0 (0), isuconp[isuconp]@localhost
+  DELETE FROM posts WHERE id > N
+
+Count: 5  Time=0.25s (1s)  Lock=0.00s (0s)  Rows=11.0 (55), isuconp[isuconp]@localhost
+  SELECT p.id, p.user_id, p.body, p.mime, p.created_at, p.comment_count,
+  u.id AS user_id, u.account_name as "S", u.del_flg as "S"
+  FROM posts p
+  JOIN users u ON p.user_id = u.id
+  WHERE p.user_id = N ORDER BY p.created_at DESC LIMIT N
+
+Count: 1  Time=0.13s (0s)  Lock=0.00s (0s)  Rows=107.0 (107), isuconp[isuconp]@localhost
+  SELECT c.id, c.post_id, c.user_id, c.comment, c.created_at,
+  u.id AS user_id, u.account_name as "S", u.del_flg as "S"
+  FROM comments AS c
+  JOIN users AS u ON c.user_id = u.id
+  WHERE c.post_id IN (N, N, N, N, N, N, N, N, N, N, N, N)
+  ORDER BY c.created_at DESC
+
+Count: 5  Time=0.09s (0s)  Lock=0.00s (0s)  Rows=1.0 (5), isuconp[isuconp]@localhost
+  SELECT COUNT(*) AS count FROM `comments` WHERE `user_id` = N
+
+Count: 6  Time=0.08s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), isuconp[isuconp]@localhost
+  UPDATE posts AS p JOIN (SELECT post_id, COUNT(*) AS count_to_subtract FROM comments WHERE id > N GROUP BY post_id) AS c ON p.id = c.post_id SET p.comment_count = p.comment_count - c.count_to_subtract
+
+Count: 1  Time=0.06s (0s)  Lock=0.00s (0s)  Rows=1.0 (1), isuconp[isuconp]@localhost
+  SELECT COUNT(*) from posts
+
+Count: 1  Time=0.01s (0s)  Lock=0.00s (0s)  Rows=1.0 (1), isuconp[isuconp]@localhost
+  SELECT COUNT(*) from comments
+
+Count: 3  Time=0.01s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), root[root]@localhost
+  FLUSH LOGS
+
+Count: 4  Time=0.01s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), isuconp[isuconp]@localhost
+  DELETE FROM users WHERE id > N
+
+Count: 4  Time=0.01s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), isuconp[isuconp]@localhost
+  INSERT INTO `users` (`account_name`, `passhash`) VALUES ('S','S')
+
+Count: 4  Time=0.01s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), isuconp[isuconp]@localhost
+  UPDATE users SET del_flg = N
+
+Count: 4  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), isuconp[isuconp]@localhost
+  UPDATE users SET del_flg = N WHERE id % N = N
+
+Count: 5  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=1.0 (5), isuconp[isuconp]@localhost
+  SELECT COUNT(DISTINCT `comments`.`post_id`) AS `post_count`, COUNT(*) AS `commented_count` FROM `comments` JOIN `posts` ON `comments`.`post_id` = `posts`.`id` WHERE `posts`.`user_id` = N
+
+Count: 27  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=198.6 (5361), isuconp[isuconp]@localhost
+  SELECT c.id, c.post_id, c.user_id, c.comment, c.created_at,
+  u.id AS user_id, u.account_name as "S", u.del_flg as "S"
+  FROM comments AS c
+  JOIN users AS u ON c.user_id = u.id
+  WHERE c.post_id IN (N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N)
+  ORDER BY c.created_at DESC
+
+Count: 26  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=20.0 (520), isuconp[isuconp]@localhost
+  SELECT p.id, p.user_id, p.body, p.mime, p.created_at, p.comment_count,
+  u.id AS user_id, u.account_name as "S", u.del_flg as "S"
+  FROM posts p
+  JOIN users u ON p.user_id = u.id
+  ORDER BY p.created_at DESC
+  LIMIT N
+
+Count: 6  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=5.0 (30), isuconp[isuconp]@localhost
+  show databases
+
+Count: 3  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=128.0 (384), isuconp[isuconp]@localhost
+  SELECT c.id, c.post_id, c.user_id, c.comment, c.created_at,
+  u.id AS user_id, u.account_name as "S", u.del_flg as "S"
+  FROM comments AS c
+  JOIN users AS u ON c.user_id = u.id
+  WHERE c.post_id IN (N, N, N, N, N, N, N, N, N, N, N, N, N)
+  ORDER BY c.created_at DESC
+
+Count: 52  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=1.0 (52), isuconp[isuconp]@localhost
+  SELECT * FROM `posts` WHERE `id` = N
+
+Count: 4  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), isuconp[isuconp]@localhost
+  DELETE FROM comments WHERE id > N
+
+Count: 7  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=3.0 (21), isuconp[isuconp]@localhost
+  show tables
+
+Count: 19  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), isuconp[isuconp]@localhost
+
+
+Count: 1  Time=0.00s (0s)  Lock=50.18s (50s)  Rows=0.0 (0), isuconp[isuconp]@localhost
+  UPDATE posts AS p JOIN (SELECT post_id, COUNT(*) AS count_to_subtract FROM comments WHERE id > N GROUP BY post_id) AS c ON /usr/sbin/mysqld, Version: N.N.N-2ubuntu3 ((Ubuntu)). started with:
+  # Time: N-N-04T09:N:N.397720Z
+  # User@Host: isuconp[isuconp] @ localhost [N.N.N.N]  Id:     N
+  # Query_time: N.N  Lock_time: N.N Rows_sent: N  Rows_examined: N
+  use isuconp;
+  SET timestamp=N;
+  show databases
+
+Count: 1  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=20.0 (20), isuconp[isuconp]@localhost
+  SELECT p.id, p.user_id, p.body, p.mime, p.created_at, p.comment_count,
+  u.id AS user_id, u.account_name as "S", u.del_flg as "S"
+  FROM posts p
+  JOIN users u ON p.user_id = u.id
+  WHERE p.created_at <= 'S' ORDER BY p.created_at DESC LIMIT N
+
+Count: 3  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=1.0 (3), isuconp[isuconp]@localhost
+  SELECT DATABASE()
+
+Count: 2  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=188.0 (376), isuconp[isuconp]@localhost
+  SELECT post_id, COUNT(*) AS count_to_subtract FROM comments WHERE id > N GROUP BY post_id
+
+Count: 1  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=47.0 (47), isuconp[isuconp]@localhost
+  SELECT c.id, c.post_id, c.user_id, c.comment, c.created_at,
+  u.id AS user_id, u.account_name as "S", u.del_flg as "S"
+  FROM comments AS c
+  JOIN users AS u ON c.user_id = u.id
+  WHERE c.post_id IN (N, N, N, N)
+  ORDER BY c.created_at DESC
+
+Count: 4  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=1.0 (4), isuconp[isuconp]@localhost
+  select @@version_comment limit N
+
+Count: 1  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), isuconp[isuconp]@localhost
+  SELECT COUNT(*) from post
+
+Count: 29  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.8 (24), isuconp[isuconp]@localhost
+  SELECT * FROM users WHERE account_name = 'S' AND del_flg = N
+
+Count: 5  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=1.0 (5), isuconp[isuconp]@localhost
+  SELECT * FROM `users` WHERE `account_name` = 'S' AND `del_flg` = N
+
+Count: 9  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), isuconp[isuconp]@localhost
+  SHOW PROCESSLIST
+
+Count: 4  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), isuconp[isuconp]@localhost
+  SELECT N FROM users WHERE `account_name` = 'S'
+
+Count: 2  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), isuconp[isuconp]@localhost
+  KILL QUERY N
+
+Count: 12  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), isuconp[isuconp]@localhost
+  SET NAMES utf8mb4
+
+Count: 349  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=18.9 (6588), 2users@localhost
+  #
+
+Count: 168  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), 0users@0hosts
+  administrator command: Close stmt
+
+Count: 10  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), 0users@0hosts
+  administrator command: Quit
+
+Count: 1  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), 0users@0hosts
+  # User@Host: isuconp[/usr/sbin/mysqld, Version: N.N.N-2ubuntu3 ((Ubuntu)). started with:
+  # Time: N-N-04T09:N:N.364896Z
+  # User@Host: isuconp[isuconp] @ localhost [N.N.N.N]  Id:     N
+  # Query_time: N.N  Lock_time: N.N Rows_sent: N  Rows_examined: N
+  use isuconp;
+  SET timestamp=N;
+  SET NAMES utf8mb4
+
+Count: 168  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), 0users@0hosts
+  administrator command: Prepare
+
+Count: 3  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), 0users@0hosts
+  administrator command: Init DB
+

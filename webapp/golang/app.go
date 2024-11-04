@@ -2,6 +2,8 @@ package main
 
 import (
 	crand "crypto/rand"
+	"crypto/sha512"
+	"encoding/hex"
 	"fmt"
 	"html/template"
 	"io"
@@ -9,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path"
 	"regexp"
 	"strconv"
@@ -26,8 +27,8 @@ import (
 )
 
 var (
-	db    *sqlx.DB
-	store *gsm.MemcacheStore
+	db             *sqlx.DB
+	store          *gsm.MemcacheStore
 	memcacheClient *memcache.Client
 )
 
@@ -120,14 +121,14 @@ func escapeshellarg(arg string) string {
 }
 
 func digest(src string) string {
-	// opensslのバージョンによっては (stdin)= というのがつくので取る
-	out, err := exec.Command("/bin/bash", "-c", `printf "%s" `+escapeshellarg(src)+` | openssl dgst -sha512 | sed 's/^.*= //'`).Output()
-	if err != nil {
-		log.Print(err)
-		return ""
-	}
+	// SHA-512ハッシュを計算
+	hash := sha512.New()
+	hash.Write([]byte(src))
 
-	return strings.TrimSuffix(string(out), "\n")
+	// ハッシュ値を取得し、16進数にエンコード
+	hashedBytes := hash.Sum(nil)
+
+	return hex.EncodeToString(hashedBytes)
 }
 
 func calculateSalt(accountName string) string {
@@ -758,13 +759,13 @@ func postIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cacheKey := fmt.Sprintf("image_%d", pid)
-    err = memcacheClient.Set(&memcache.Item{
-        Key:   cacheKey,
-        Value: filedata,
-    })
-    if err != nil {
-        log.Printf("Failed to cache image: %v", err)
-    }
+	err = memcacheClient.Set(&memcache.Item{
+		Key:   cacheKey,
+		Value: filedata,
+	})
+	if err != nil {
+		log.Printf("Failed to cache image: %v", err)
+	}
 
 	http.Redirect(w, r, "/posts/"+strconv.FormatInt(pid, 10), http.StatusFound)
 }
@@ -781,12 +782,12 @@ func getImage(w http.ResponseWriter, r *http.Request) {
 	// キャッシュから画像を取得
 	item, err := memcacheClient.Get(cacheKey)
 	if err == nil && item != nil {
-			w.Header().Set("Content-Type", http.DetectContentType(item.Value))
-			_, err = w.Write(item.Value)
-			if err != nil {
-					log.Print(err)
-			}
-			return
+		w.Header().Set("Content-Type", http.DetectContentType(item.Value))
+		_, err = w.Write(item.Value)
+		if err != nil {
+			log.Print(err)
+		}
+		return
 	}
 
 	// キャッシュに存在しない場合、データベースから取得

@@ -1,0 +1,119 @@
+
+# 180ms user time, 10ms system time, 27.38M rss, 35.00M vsz
+# Current date: Mon Nov  4 18:40:48 2024
+# Hostname: ip-10-1-1-8
+# Files: /var/log/mysql/slow.log
+# Overall: 598 total, 34 unique, 0.22 QPS, 0.02x concurrency _____________
+# Time range: 2024-11-04T08:54:25 to 2024-11-04T09:39:21
+# Attribute          total     min     max     avg     95%  stddev  median
+# ============     ======= ======= ======= ======= ======= ======= =======
+# Exec time            54s     1us     50s    91ms     5ms      2s   113us
+# Lock time            50s       0     50s    84ms     2us      2s       0
+# Rows sent          6.86k       0     199   11.75  124.25   42.13       0
+# Rows examine     614.43k       0  97.66k   1.03k  592.07   8.90k       0
+# Query size        40.09k       0     380   68.65  329.68   90.07   31.70
+
+# Profile
+# Rank Query ID                       Response time Calls R/Call  V/M   It
+# ==== ============================== ============= ===== ======= ===== ==
+#    1 0xD41D8CD98F00B204E9800998E... 50.1820 92.3%     2 25.0910 50.18 
+#    2 0x77938F0C35A5722A798DE77E4...  1.2941  2.4%     4  0.3235  0.93 DELETE posts
+#    3 0xBF61D860E01B90258787F69CD...  1.2723  2.3%     5  0.2545  0.90 SELECT posts users
+# MISC 0xMISC                          1.6174  3.0%   587  0.0028   0.0 <31 ITEMS>
+
+# Query 1: 0.00 QPS, 0.02x concurrency, ID 0xD41D8CD98F00B204E9800998ECF8427E at byte 3765
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 50.18
+# Time range: 2024-11-04T08:57:28 to 2024-11-04T09:38:45
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       2
+# Exec time     92     50s    82us     50s     25s     50s     35s     25s
+# Lock time     99     50s       0     50s     25s     50s     35s     25s
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       1       0       1    0.50       1    0.71    0.50
+# Query size     0       0       0       0       0       0       0       0
+# String:
+# Databases    isuconp
+# Hosts        localhost
+# Users        isuconp
+# Query_time distribution
+#   1us
+#  10us  ################################################################
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+  ################################################################
+/* No query */\G
+
+# Query 2: 0.03 QPS, 0.01x concurrency, ID 0x77938F0C35A5722A798DE77E477DF648 at byte 17438
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.93
+# Time range: 2024-11-04T09:31:50 to 2024-11-04T09:34:02
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       4
+# Exec time      2      1s   132us      1s   324ms      1s   548ms   131us
+# Lock time      0     7us     1us     2us     1us     1us       0     1us
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0     206       0     206   51.50  202.40   87.64       0
+# Query size     0     136      34      34      34      34       0      34
+# String:
+# Databases    isuconp
+# Hosts        localhost
+# Users        isuconp
+# Query_time distribution
+#   1us
+#  10us
+# 100us  ################################################################
+#   1ms
+#  10ms
+# 100ms
+#    1s  #####################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `isuconp` LIKE 'posts'\G
+#    SHOW CREATE TABLE `isuconp`.`posts`\G
+DELETE FROM posts WHERE id > 10000\G
+# Converted for EXPLAIN
+# EXPLAIN /*!50100 PARTITIONS*/
+select * from  posts WHERE id > 10000\G
+
+# Query 3: 0.04 QPS, 0.01x concurrency, ID 0xBF61D860E01B90258787F69CDB6129FF at byte 22151
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.90
+# Time range: 2024-11-04T09:31:51 to 2024-11-04T09:34:03
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       5
+# Exec time      2      1s    12ms      1s   254ms      1s   478ms    11ms
+# Lock time      0     8us     1us     2us     1us     1us       0     1us
+# Rows sent      0      55       4      13      11   12.54    3.41   12.54
+# Rows examine   7  48.83k   9.77k   9.77k   9.77k   9.77k       0   9.77k
+# Query size     3   1.38k     281     282  281.80  271.23       0  271.23
+# String:
+# Databases    isuconp
+# Hosts        localhost
+# Users        isuconp
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms  ################################################################
+# 100ms
+#    1s  ################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `isuconp` LIKE 'posts'\G
+#    SHOW CREATE TABLE `isuconp`.`posts`\G
+#    SHOW TABLE STATUS FROM `isuconp` LIKE 'users'\G
+#    SHOW CREATE TABLE `isuconp`.`users`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT p.id, p.user_id, p.body, p.mime, p.created_at, p.comment_count,
+           u.id AS user_id, u.account_name as "user.account_name", u.del_flg as "user.del_flg"
+				FROM posts p
+				JOIN users u ON p.user_id = u.id
+				 WHERE p.user_id = 280 ORDER BY p.created_at DESC LIMIT 20\G
