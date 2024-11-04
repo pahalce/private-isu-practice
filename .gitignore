@@ -16,3 +16,9 @@ portal/tmp
 !/portal/log/.keep
 /portal/tmp
 .vagrant
+
+/webapp/slowlog_setup.sh
+/webapp/alp
+/webapp/alp_seup.sh
+/webapp/alp_linux_arm64.tar.gz
+/webapp/golang/log/*
