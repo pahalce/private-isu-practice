@@ -11,7 +11,6 @@ services:
       - my_network
 
   app:
-    # Go実装の場合は golang/ PHP実装の場合は php/
     build: golang/
     environment:
       ISUCONP_DB_HOST: mysql
@@ -20,6 +19,7 @@ services:
       ISUCONP_DB_PASSWORD: root
       ISUCONP_DB_NAME: isuconp
       ISUCONP_MEMCACHED_ADDRESS: memcached:11211
+      ISUCONP_REDIS_ADDRESS: redis:6379
     networks:
       - my_network
     volumes:
@@ -34,7 +34,7 @@ services:
   mysql:
     image: mysql:8.4
     environment:
-      #- "TZ=Asia/Tokyo"
+      - "TZ=Asia/Tokyo"
       - "MYSQL_ROOT_HOST=%"
       - "MYSQL_ROOT_PASSWORD=root"
     volumes:
@@ -52,6 +52,13 @@ services:
 
   memcached:
     image: memcached:1.6
+    networks:
+      - my_network
+
+  redis: # Redisサービスの追加
+    image: redis:7.0 # 使用するRedisのバージョンを指定
+    ports:
+      - "6379:6379"
     networks:
       - my_network
 
