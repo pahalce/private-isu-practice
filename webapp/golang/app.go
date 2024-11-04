@@ -19,6 +19,7 @@ import (
 	"github.com/bradfitz/gomemcache/memcache"
 	gsm "github.com/bradleypeabody/gorilla-sessions-memcache"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
@@ -51,7 +52,7 @@ type Post struct {
 	Body         string    `db:"body"`
 	Mime         string    `db:"mime"`
 	CreatedAt    time.Time `db:"created_at"`
-	CommentCount int
+	CommentCount int       `db:"comment_count"`
 	Comments     []Comment
 	User         User
 	CSRFToken    string
@@ -78,6 +79,7 @@ func init() {
 
 func dbInitialize() {
 	sqls := []string{
+		"UPDATE posts AS p JOIN (SELECT post_id, COUNT(*) AS count_to_subtract FROM comments WHERE id > 100000 GROUP BY post_id) AS c ON p.id = c.post_id SET p.comment_count = p.comment_count - c.count_to_subtract",
 		"DELETE FROM users WHERE id > 1000",
 		"DELETE FROM posts WHERE id > 10000",
 		"DELETE FROM comments WHERE id > 100000",
@@ -175,17 +177,13 @@ func makePosts(results []Post, csrfToken string, allComments bool) ([]Post, erro
 	var posts []Post
 
 	for _, p := range results {
-		err := db.Get(&p.CommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", p.ID)
-		if err != nil {
-			return nil, err
-		}
 
 		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"
 		if !allComments {
 			query += " LIMIT 3"
 		}
 		var comments []Comment
-		err = db.Select(&comments, query, p.ID)
+		err := db.Select(&comments, query, p.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -386,7 +384,7 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 
 	results := []Post{}
 
-	err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
+	err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at`, `comment_count` FROM `posts` ORDER BY `created_at` DESC")
 	if err != nil {
 		log.Print(err)
 		return
@@ -432,7 +430,7 @@ func getAccountName(w http.ResponseWriter, r *http.Request) {
 
 	results := []Post{}
 
-	err = db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` WHERE `user_id` = ? ORDER BY `created_at` DESC", user.ID)
+	err = db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at`, `comment_count` FROM `posts` WHERE `user_id` = ? ORDER BY `created_at` DESC", user.ID)
 	if err != nil {
 		log.Print(err)
 		return
@@ -451,33 +449,15 @@ func getAccountName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	postIDs := []int{}
-	err = db.Select(&postIDs, "SELECT `id` FROM `posts` WHERE `user_id` = ?", user.ID)
+	type PostCounts struct {
+		PostCount      int `db:"post_count"`
+		CommentedCount int `db:"commented_count"`
+	}
+	postCounts := PostCounts{}
+	err = db.Get(&postCounts, "SELECT COUNT(DISTINCT `comments`.`post_id`) AS `post_count`, COUNT(*) AS `commented_count` FROM `comments` JOIN `posts` ON `comments`.`post_id` = `posts`.`id` WHERE `posts`.`user_id` = ?", user.ID)
 	if err != nil {
 		log.Print(err)
 		return
-	}
-	postCount := len(postIDs)
-
-	commentedCount := 0
-	if postCount > 0 {
-		s := []string{}
-		for range postIDs {
-			s = append(s, "?")
-		}
-		placeholder := strings.Join(s, ", ")
-
-		// convert []int -> []interface{}
-		args := make([]interface{}, len(postIDs))
-		for i, v := range postIDs {
-			args[i] = v
-		}
-
-		err = db.Get(&commentedCount, "SELECT COUNT(*) AS count FROM `comments` WHERE `post_id` IN ("+placeholder+")", args...)
-		if err != nil {
-			log.Print(err)
-			return
-		}
 	}
 
 	me := getSessionUser(r)
@@ -498,7 +478,7 @@ func getAccountName(w http.ResponseWriter, r *http.Request) {
 		CommentCount   int
 		CommentedCount int
 		Me             User
-	}{posts, user, postCount, commentCount, commentedCount, me})
+	}{posts, user, postCounts.PostCount, commentCount, postCounts.CommentedCount, me})
 }
 
 func getPosts(w http.ResponseWriter, r *http.Request) {
@@ -520,7 +500,7 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	results := []Post{}
-	err = db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` WHERE `created_at` <= ? ORDER BY `created_at` DESC", t.Format(ISO8601Format))
+	err = db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at`, `comment_count` FROM `posts` WHERE `created_at` <= ? ORDER BY `created_at` DESC", t.Format(ISO8601Format))
 	if err != nil {
 		log.Print(err)
 		return
@@ -720,9 +700,28 @@ func postComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := "INSERT INTO `comments` (`post_id`, `user_id`, `comment`) VALUES (?,?,?)"
-	_, err = db.Exec(query, postID, me.ID, r.FormValue("comment"))
+	tx, err := db.Begin()
 	if err != nil {
+		return
+	}
+
+	query := "INSERT INTO `comments` (`post_id`, `user_id`, `comment`) VALUES (?,?,?)"
+	_, err = tx.Exec(query, postID, me.ID, r.FormValue("comment"))
+	if err != nil {
+		log.Print(err)
+		tx.Rollback()
+		return
+	}
+
+	updateQuery := "UPDATE posts SET comment_count = comment_count + 1 WHERE id = ?"
+	_, err = tx.Exec(updateQuery, postID)
+	if err != nil {
+		log.Print(err)
+		tx.Rollback() // エラーが発生した場合はロールバック
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
 		log.Print(err)
 		return
 	}
@@ -792,6 +791,7 @@ func postAdminBanned(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+
 	host := os.Getenv("ISUCONP_DB_HOST")
 	if host == "" {
 		host = "localhost"
@@ -800,7 +800,15 @@ func main() {
 	if port == "" {
 		port = "3306"
 	}
-	_, err := strconv.Atoi(port)
+
+	logFile, err := os.OpenFile("/home/isucon/private_isu/webapp/golang/log/my-go-app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatalf("ログファイルを開けません: %v", err)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
+
+	_, err = strconv.Atoi(port)
 	if err != nil {
 		log.Fatalf("Failed to read DB port number from an environment variable ISUCONP_DB_PORT.\nError: %s", err.Error())
 	}
@@ -831,6 +839,11 @@ func main() {
 
 	r := chi.NewRouter()
 
+	r.Use(middleware.RequestLogger(&middleware.DefaultLogFormatter{
+		Logger:  log.New(logFile, "", log.LstdFlags),
+		NoColor: true,
+	}))
+
 	r.Get("/initialize", getInitialize)
 	r.Get("/login", getLogin)
 	r.Post("/login", postLogin)
@@ -849,6 +862,8 @@ func main() {
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 		http.FileServer(http.Dir("../public")).ServeHTTP(w, r)
 	})
+
+	log.Print("Starting server on :8000")
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }

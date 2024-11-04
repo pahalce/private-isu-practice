@@ -1,0 +1,48 @@
+Count: 4  Time=0.02s (0s)  Lock=0.00s (0s)  Rows=9969.0 (39876), isuconp[isuconp]@localhost
+  SELECT `id`, `user_id`, `body`, `mime`, `created_at`, `comment_count` FROM `posts` WHERE `created_at` <= 'S' ORDER BY `created_at` DESC
+
+Count: 3  Time=0.02s (0s)  Lock=0.00s (0s)  Rows=10078.0 (30234), isuconp[isuconp]@localhost
+  SELECT `id`, `user_id`, `body`, `mime`, `created_at`, `comment_count` FROM `posts` ORDER BY `created_at` DESC
+
+Count: 13  Time=0.02s (0s)  Lock=0.00s (0s)  Rows=1.0 (13), isuconp[isuconp]@localhost
+  SELECT COUNT(*) AS count FROM `comments` WHERE `user_id` = N
+
+Count: 2  Time=0.01s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), root[root]@localhost
+  FLUSH LOGS
+
+Count: 13  Time=0.01s (0s)  Lock=0.00s (0s)  Rows=8.8 (115), isuconp[isuconp]@localhost
+  SELECT `id`, `user_id`, `body`, `mime`, `created_at`, `comment_count` FROM `posts` WHERE `user_id` = N ORDER BY `created_at` DESC
+
+Count: 4  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=1.0 (4), isuconp[isuconp]@localhost
+  SELECT COUNT(DISTINCT `comments`.`post_id`) AS `post_count`, COUNT(*) AS `commented_count` FROM `comments` JOIN `posts` ON `comments`.`post_id` = `posts`.`id` WHERE `posts`.`user_id` = N
+
+Count: 5  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=1.0 (5), isuconp[isuconp]@localhost
+  SELECT COUNT(DISTINCT `comments`.`post_id`), COUNT(*) FROM `comments` JOIN `posts` ON `comments`.`post_id` = `posts`.`id` WHERE `posts`.`user_id` = N
+
+Count: 126  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=1.0 (126), isuconp[isuconp]@localhost
+  SELECT * FROM `posts` WHERE `id` = N
+
+Count: 13  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=1.0 (13), isuconp[isuconp]@localhost
+  SELECT * FROM `users` WHERE `account_name` = 'S' AND `del_flg` = N
+
+Count: 260  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=2.1 (559), isuconp[isuconp]@localhost
+  SELECT * FROM `comments` WHERE `post_id` = N ORDER BY `created_at` DESC LIMIT N
+
+Count: 18  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), isuconp[isuconp]@localhost
+  SET NAMES utf8mb4
+
+Count: 819  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=1.0 (819), isuconp[isuconp]@localhost
+  SELECT * FROM `users` WHERE `id` = N
+
+Count: 2523  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=16.5 (41530), 2users@localhost
+  #
+
+Count: 1260  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), 0users@0hosts
+  administrator command: Prepare
+
+Count: 1257  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), 0users@0hosts
+  administrator command: Close stmt
+
+Count: 6  Time=0.00s (0s)  Lock=0.00s (0s)  Rows=0.0 (0), 0users@0hosts
+  administrator command: Quit
+
