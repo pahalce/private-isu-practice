@@ -21,15 +21,16 @@ import (
 	gsm "github.com/bradleypeabody/gorilla-sessions-memcache"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-redis/redis"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
 )
 
 var (
-	db             *sqlx.DB
-	store          *gsm.MemcacheStore
-	memcacheClient *memcache.Client
+	db    *sqlx.DB
+	store *gsm.MemcacheStore
+	redisClient *redis.Client // Redisクライアント
 )
 
 const (
@@ -74,8 +75,20 @@ func init() {
 	if memdAddr == "" {
 		memdAddr = "localhost:11211"
 	}
-	memcacheClient = memcache.New(memdAddr)
+	memcacheClient := memcache.New(memdAddr)
 	store = gsm.NewMemcacheStore(memcacheClient, "iscogram_", []byte("sendagaya"))
+
+	redisAddress := os.Getenv("ISUCONP_REDIS_ADDRESS")
+	if redisAddress == "" {
+			redisAddress = "localhost:6379" // デフォルト値
+	}
+
+	redisClient = redis.NewClient(&redis.Options{
+			Addr:     redisAddress,
+			Password: "",  // パスワードなし
+			DB:       0,   // デフォルトDB
+	})
+
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 }
 
@@ -758,15 +771,6 @@ func postIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cacheKey := fmt.Sprintf("image_%d", pid)
-	err = memcacheClient.Set(&memcache.Item{
-		Key:   cacheKey,
-		Value: filedata,
-	})
-	if err != nil {
-		log.Printf("Failed to cache image: %v", err)
-	}
-
 	http.Redirect(w, r, "/posts/"+strconv.FormatInt(pid, 10), http.StatusFound)
 }
 
@@ -779,41 +783,52 @@ func getImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cacheKey := fmt.Sprintf("image_%d", pid)
-	// キャッシュから画像を取得
-	item, err := memcacheClient.Get(cacheKey)
-	if err == nil && item != nil {
-		w.Header().Set("Content-Type", http.DetectContentType(item.Value))
-		_, err = w.Write(item.Value)
-		if err != nil {
-			log.Print(err)
-		}
-		return
+
+	// Redisから画像を取得
+	imgData, err := redisClient.Get(cacheKey).Bytes()
+	if err == nil {
+			w.Header().Set("Content-Type", http.DetectContentType(imgData))
+			_, err = w.Write(imgData)
+			if err != nil {
+					log.Print(err)
+			}
+			return
+	} else if err != redis.Nil {
+			// Redis接続のエラーの場合
+			log.Printf("Failed to get image from Redis: %v", err)
 	}
 
 	// キャッシュに存在しない場合、データベースから取得
 	post := Post{}
 	err = db.Get(&post, "SELECT * FROM `posts` WHERE `id` = ?", pid)
 	if err != nil {
-		log.Print(err)
-		return
+			log.Print(err)
+			w.WriteHeader(http.StatusNotFound)
+			return
 	}
-
 	ext := r.PathValue("ext")
 
 	if ext == "jpg" && post.Mime == "image/jpeg" ||
-		ext == "png" && post.Mime == "image/png" ||
-		ext == "gif" && post.Mime == "image/gif" {
-		w.Header().Set("Content-Type", post.Mime)
-		_, err := w.Write(post.Imgdata)
-		if err != nil {
-			log.Print(err)
+		 ext == "png" && post.Mime == "image/png" ||
+		 ext == "gif" && post.Mime == "image/gif" {
+			// キャッシュに保存
+			err = redisClient.Set(cacheKey, post.Imgdata, 0).Err()
+			if err != nil {
+					log.Printf("Failed to cache image in Redis: %v", err)
+			}
+
+			// レスポンスに画像を送信
+			w.Header().Set("Content-Type", post.Mime)
+			_, err = w.Write(post.Imgdata)
+			if err != nil {
+					log.Print(err)
+			}
 			return
-		}
-		return
 	}
 
 	w.WriteHeader(http.StatusNotFound)
 }
+
 
 func postComment(w http.ResponseWriter, r *http.Request) {
 	me := getSessionUser(r)
@@ -934,14 +949,14 @@ func main() {
 		port = "3306"
 	}
 
-	logFile, err := os.OpenFile("/home/isucon/private_isu/webapp/golang/log/my-go-app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Fatalf("ログファイルを開けません: %v", err)
-	}
-	defer logFile.Close()
-	log.SetOutput(logFile)
+	// logFile, err := os.OpenFile("/home/isucon/private_isu/webapp/golang/log/my-go-app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	// if err != nil {
+	// 	log.Fatalf("ログファイルを開けません: %v", err)
+	// }
+	// defer logFile.Close()
+	// log.SetOutput(logFile)
 
-	_, err = strconv.Atoi(port)
+	_, err := strconv.Atoi(port)
 	if err != nil {
 		log.Fatalf("Failed to read DB port number from an environment variable ISUCONP_DB_PORT.\nError: %s", err.Error())
 	}
@@ -973,7 +988,7 @@ func main() {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestLogger(&middleware.DefaultLogFormatter{
-		Logger:  log.New(logFile, "", log.LstdFlags),
+		Logger:  log.New(os.Stdout, "", log.LstdFlags),
 		NoColor: true,
 	}))
 
